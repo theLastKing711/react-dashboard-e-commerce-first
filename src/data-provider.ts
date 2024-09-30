@@ -35,6 +35,8 @@ export const dataProvider = (url: string): DataProvider => ({
 
   create: async ({resource, variables}) => {
 
+    console.log("variables", variables);
+
     const postUrl = `${url}/${resource}`;
 
     try {
@@ -122,7 +124,7 @@ export const dataProvider = (url: string): DataProvider => ({
     
     // console.log("pagination", pagination);
 
-    // console.log("filters1" ,filters);
+    console.log("filters" ,filters);
 
     const filtersQuery = getFiltersQuery(filters);
     
@@ -205,7 +207,7 @@ const getFiltersQuery = (filters: CrudFilter[] | undefined) => {
     if(item.value)
     {
       let lastChar = item.field[item.field.length - 1];
-      if(lastChar === "]")
+      if(Array.isArray(item.value))
       {
         item.value.forEach((listItem, index) => {
           query += '&' + item.field + "=" + listItem;

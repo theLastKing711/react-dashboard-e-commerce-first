@@ -93,19 +93,41 @@ export const CategoryList = () => {
     onSearch: (params) => {
       console.log("params", params);
       const filters: CrudFilters = [];
-      const { search, ids } = params;
+      const { search, ids, date_range } = params;
       console.log("parent_ids", ids);
+
+      console.log("search", search);
+
+      console.log("ids", ids);
+
+      const date_range_values = date_range
+        ? date_range.map((value) => {
+            console.log("date_range_value", value);
+            return value.toDate();
+          })
+        : undefined;
+
+      console.log("date_range_on_search", date_range);
+      console.log("date_range_values", date_range_values);
 
       filters.push({
         field: "search",
         operator: "contains",
         value: search,
       });
+
       filters.push({
         field: "ids[]",
         operator: "contains",
         value: ids,
       });
+
+      filters.push({
+        field: "date_range[]",
+        operator: "between",
+        value: date_range,
+      });
+
       return filters;
     },
   });

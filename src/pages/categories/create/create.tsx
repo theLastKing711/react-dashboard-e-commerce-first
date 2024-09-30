@@ -1,22 +1,28 @@
-import React from "react";
+import { useState } from "react";
 
-import { Create, useForm, useSelect } from "@refinedev/antd";
+import { Create, getValueFromEvent, useForm } from "@refinedev/antd";
 
-import { Form, Input, message, Select } from "antd";
+import { Form, Input, Select, Upload } from "antd";
 
 import MDEditor from "@uiw/react-md-editor";
 import { ICreateCategory } from "../types";
-import { useCustom, useMany } from "@refinedev/core";
-import { ListData, ListDataItem } from "../../../shared/types";
-import { ADMIN_URI, BASE_URI, RESOURSES } from "../../../constants";
+import { HttpError, useNotification } from "@refinedev/core";
+import { ImageResponseData } from "../../../shared/types";
+import { BASE_URI } from "../../../constants";
 const { Option } = Select;
+import type { UploadFile } from "antd";
+import { apiClient } from "../../../libs/axios/config";
+import useGetParentCategoriesList from "../hooks/useGetParentCategoriesList";
 
 export const CategoryCreate = () => {
+  const { open } = useNotification();
+
   const {
     formProps,
     saveButtonProps,
     mutation: mutationResult,
-  } = useForm<ICreateCategory>({
+    onFinish,
+  } = useForm<{ item: string }, HttpError, ICreateCategory, ICreateCategory>({
     successNotification: (data, values, resourses) => ({
       message: "إنشاء تصنيف جديد",
       description: "تم إنشاء تصنيف جديد بنجاح",
@@ -24,20 +30,83 @@ export const CategoryCreate = () => {
     }),
   });
 
-  const { query: categorySelectList, selectProps } = useSelect<ListDataItem>({
-    resource: `${RESOURSES.category}/list`,
-    searchField: "title",
-  });
+  const { parentCategoriesList, parentCategoriesListSelectProps } =
+    useGetParentCategoriesList();
+
+  const [isUploadingImage, setIsUploadingImage] = useState<boolean>(false);
 
   const errorsList = mutationResult?.error?.errors?.data as [] | undefined;
 
+  const handleFinish: (items: ICreateCategory) => void | undefined = (
+    items
+  ) => {
+    const image_urls = items?.images as UploadFile[] | undefined;
+
+    const newImages: ImageResponseData[] | undefined = image_urls?.map(
+      (image) =>
+        ({
+          url: image.response.url,
+          public_id: image.response.public_id,
+        } as ImageResponseData)
+    );
+
+    const { images, ...withoutImagesItems } = items;
+
+    const requestVariables: ICreateCategory = {
+      ...withoutImagesItems,
+      image_urls: newImages,
+    };
+
+    formProps.onFinish?.(requestVariables);
+  };
+
   return (
     <Create
-      saveButtonProps={{ ...saveButtonProps, children: "حفظ" }}
+      saveButtonProps={{
+        ...saveButtonProps,
+        children: "حفظ",
+        disabled: isUploadingImage,
+      }}
       title="إنشاء تصنيف جديد"
-      isLoading={categorySelectList.isLoading}
+      isLoading={parentCategoriesList.isLoading}
     >
-      <Form {...formProps} layout="vertical">
+      <Form {...formProps} onFinish={handleFinish} layout="vertical">
+        <Form.Item
+          name="images"
+          label="صور"
+          valuePropName="fileList"
+          getValueFromEvent={getValueFromEvent}
+          noStyle
+        >
+          <Upload.Dragger
+            name="file"
+            listType="picture"
+            maxCount={2}
+            customRequest={async (options) => {
+              try {
+                setIsUploadingImage(true);
+                const result = await apiClient.postForm(`${BASE_URI}/files`, {
+                  file: options.file,
+                });
+                console.log("result", result);
+                options.onSuccess?.(result.data);
+              } catch (error) {
+                open?.({
+                  type: "error",
+                  message: "حذث حطأ أثناء تحميل الصورة",
+                });
+                options.onError?.({
+                  name: "تحميل الصورة",
+                  message: "حدث خطأ أثناء تحميل الصورة",
+                });
+              } finally {
+                setIsUploadingImage(false);
+              }
+            }}
+          >
+            <p className="ant-upload-text">Drag & drop a file in this area</p>
+          </Upload.Dragger>
+        </Form.Item>
         <Form.Item
           label="اسم التصنيف"
           name="name"
@@ -53,7 +122,7 @@ export const CategoryCreate = () => {
         <Form.Item name="parent_id" label="تصنيف اﻷب">
           <Select
             style={{ width: 300 }}
-            {...selectProps}
+            {...parentCategoriesListSelectProps}
             showSearch
             allowClear
             filterOption={(input, option) => {

@@ -21,16 +21,7 @@ export const AdminEdit = () => {
     }),
   });
 
-  // const { query } = useShow<IAdminShow>();
-
-  // console.log("mutation result", mutationResult);
-
   const postData = mutationResult?.data?.data;
-
-  // const { selectProps: categorySelectProps } = useSelect<ICategory>({
-  //   resource: "categories",
-  //   defaultValue: postData?.category.id,
-  // });
 
   const errorsList = mutationResult?.error?.errors?.data as [] | undefined;
 
